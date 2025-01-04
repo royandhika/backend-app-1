@@ -1,0 +1,59 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id String @id @unique @db.VarChar(36)
+  username String @unique @db.VarChar(20)
+  password String @db.VarChar(200)
+  email String @unique @db.VarChar(30)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt()
+
+  profile Profile?
+  session Session[]
+
+  @@map("users")
+}
+
+model Profile {
+  id Int @id @default(autoincrement())
+  user_id String @unique @db.VarChar(36)
+  username String @unique @db.VarChar(20)
+  fullname String? @db.VarChar(50)
+  phone String? @db.VarChar(20)
+  city String? @db.VarChar(30)
+  region String? @db.VarChar(50)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt()
+
+  user User @relation(fields: [user_id], references: [id])
+  
+  @@map("profiles")
+}
+
+model Session {
+  id Int @id @default(autoincrement())
+  user_id String @db.VarChar(36)
+  refresh_token String @db.VarChar(250)
+  user_agent String @db.VarChar(50)
+  ip_address String @db.VarChar(20)
+  is_active Int @db.TinyInt
+  created_at DateTime @default(now()) 
+  updated_at DateTime @updatedAt()
+
+  user User @relation(fields: [user_id], references: [id])
+
+  @@map("sessions")
+}
