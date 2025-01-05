@@ -4,10 +4,10 @@ import sessionController from "../controller/session-controller.js";
 
 const publicRouter = new express.Router();
 // users
-publicRouter.post("/api/users", userController.register);
+publicRouter.post("/api/v1/users", userController.register);
 // sessions
-publicRouter.post("/api/sessions", sessionController.login);
-publicRouter.post("/api/sessions/refresh", sessionController.refresh);
+publicRouter.post("/api/v1/sessions", sessionController.login);
+publicRouter.post("/api/v1/sessions/refresh", sessionController.refresh);
 
 export {
     publicRouter

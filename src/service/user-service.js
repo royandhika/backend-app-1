@@ -1,7 +1,7 @@
 import { prismaClient } from "../app/database.js";
 import bcrypt from "bcrypt";
 import { v4 as uuid } from "uuid";
-import { registerValidation } from "../validation/user-validation.js";
+import { registerValidation, updateValidation } from "../validation/user-validation.js";
 import { validate } from "../validation/validation.js";
 import { ResponseError } from "../error/response-error.js";
 
@@ -35,6 +35,7 @@ const register = async (request) => {
             create: {
                 username: registerRequest.username,
                 phone: registerRequest.phone,
+                role: "user"
             }
         }
     };
@@ -50,9 +51,61 @@ const register = async (request) => {
             }
         });
     }
+};
 
+const get = async (request) => {
+    const getRequest = await prismaClient.profile.findFirst({
+        where: {
+            user_id: request.user_id,
+        },
+        select: {
+            username: true,
+            avatar: true,
+            firstname: true,
+            lastname: true,
+            birthdate: true,
+            gender: true,
+            phone: true,
+            city: true,
+            region: true,
+            country: true,
+            role: true,
+        }
+    });
+
+    if (!getRequest) {
+        throw new ResponseError(404, "User not found")
+    }
+
+    return getRequest;
+};
+
+const update = async (request) => {
+    const updateRequest = validate(updateValidation, request);
+
+    return prismaClient.profile.update({
+        where: {
+            user_id: request.user_id,
+        },
+        data: updateRequest,
+        select: {
+            username: true,
+            avatar: true,
+            firstname: true,
+            lastname: true,
+            birthdate: true,
+            gender: true,
+            phone: true,
+            city: true,
+            region: true,
+            country: true,
+            role: true,
+        }
+    });        
 }
 
 export default {
-    register
+    register,
+    get,
+    update
 }

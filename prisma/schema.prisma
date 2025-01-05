@@ -31,10 +31,16 @@ model Profile {
   id Int @id @default(autoincrement())
   user_id String @unique @db.VarChar(36)
   username String @unique @db.VarChar(20)
-  fullname String? @db.VarChar(50)
+  avatar String? @db.VarChar(250) 
+  firstname String? @db.VarChar(50)
+  lastname String? @db.VarChar(50)
+  birthdate DateTime? @db.Date
+  gender Int? @db.TinyInt
   phone String? @db.VarChar(20)
   city String? @db.VarChar(30)
   region String? @db.VarChar(50)
+  country String? @db.VarChar(50)
+  role String @db.VarChar(10)
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt()
 
