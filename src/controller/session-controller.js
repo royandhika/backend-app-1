@@ -24,7 +24,9 @@ const login = async (req, res, next) => {
 
 const refresh = async (req, res, next) => {
     try {
-        const result = await sessionService.refresh(req.cookies);
+        // update penyesuaian flutter
+        // const result = await sessionService.refresh(req.cookies);
+        const result = req.cookies.refreshToken ? await sessionService.refresh(req.cookies) : await sessionService.refresh(req.body);
 
         res.status(200).json({
             data: result
@@ -37,7 +39,12 @@ const refresh = async (req, res, next) => {
 // Auth required
 const logout = async (req, res, next) => {
     try {
-        await sessionService.logout(req.cookies);
+        // await sessionService.logout(req.cookies);
+        if (!req.cookies.refreshToken) {
+            await sessionService.logout(req.body);
+        } else {
+            await sessionService.logout(req.cookies);
+        }
 
         res.clearCookie("refreshToken");
         // clear accessToken di frontend

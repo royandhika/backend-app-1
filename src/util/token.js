@@ -3,8 +3,8 @@ import jwt from "jsonwebtoken";
 const jwtKey = process.env.JWT_SECRET_KEY;
 
 const signToken = async (user, type) => {
-    const expiresIn = type === "refresh" ? "1d"
-        : type === "access" ? "15m"
+    const expiresIn = type === "refresh" ? "10m"
+        : type === "access" ? "2m"
         : undefined;
 
     const token = jwt.sign(

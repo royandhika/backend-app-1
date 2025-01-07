@@ -51,7 +51,8 @@ const login = async (request) => {
 };
 
 const refresh = async (request) => {
-    const user = request.refreshToken ? await verifyToken(request.refreshToken) : undefined;
+    // const user = request.refreshToken ? await verifyToken(request.refreshToken) : undefined;
+    const user = request.refreshToken ? await verifyToken(request.refreshToken) : await verifyToken(request.refresh_token);
     if (!user) {
         throw new ResponseError(401, "Unauthorized");
     };
@@ -77,10 +78,12 @@ const refresh = async (request) => {
 
 const logout = async (request) => {
     // const user = request.refreshToken ? await verifyToken(request.refreshToken) : undefined;
+    const token = request.refreshToken ? request.refreshToken : request.refresh_token;
 
     return prismaClient.session.updateMany({
         where: {
-            refresh_token: request.refreshToken
+            // refresh_token: request.refreshToken
+            refresh_token: token
         },
         data: {
             is_active: 0
