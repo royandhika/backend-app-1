@@ -5,8 +5,8 @@ import { loginValidation } from "../validation/session-validation.js";
 import { validate } from "../validation/validation.js";
 import bcrypt from "bcrypt";
 
-const login = async (request) => {
-    const loginRequest = validate(loginValidation, request);
+const login = async (body) => {
+    const loginRequest = validate(loginValidation, body);
 
     const userExist = await prismaClient.user.findFirst({
         where: {
@@ -44,57 +44,90 @@ const login = async (request) => {
             refresh_token: true
         }
     });
-
+    // Selipkan access_token ke body response
     result.access_token = accessToken;
 
     return result;
 };
 
-const refresh = async (request) => {
-    // const user = request.refreshToken ? await verifyToken(request.refreshToken) : undefined;
-    const user = request.refreshToken ? await verifyToken(request.refreshToken) : await verifyToken(request.refresh_token);
+const refresh = async (cookie, body) => {
+    // Ambil refreshToken di cookie, kalau gaada, ambil refresh_token di body request
+    const user = cookie.refreshToken ? await verifyToken(cookie.refreshToken) : await verifyToken(body.refresh_token);
+    const refreshToken = cookie.refreshToken ? cookie.refreshToken : body.refresh_token;
     if (!user) {
         throw new ResponseError(401, "Unauthorized");
     };
 
-    const result = await prismaClient.session.findFirst({
+    const isValidRefreshToken = await prismaClient.session.findFirst({
         where: {
-            refresh_token: request.refreshToken,
+            user_id: user.id,
+            refresh_token: refreshToken,
             is_active: 1,
         },
         select: {
             user_id: true,
         }
     });
-    if (!result) {
+    if (!isValidRefreshToken) {
         throw new ResponseError(401, "Unauthorized");
     };
 
     const newAccessToken = await signToken(user, "access");
+    const newRefreshToken = await signToken(user, "refresh");
+
+    // Disable refresh token yang dipakai barusan
+    await prismaClient.session.updateMany({
+        where: {
+            refresh_token: refreshToken,
+        },
+        data: {
+            is_active: 0,
+        }
+    });
+    // Buat refresh token baru untuk gantikan yang lama
+    const result = await prismaClient.session.create({
+        data: {
+            user_id: user.id,
+            refresh_token: newRefreshToken,
+            user_agent: body.userAgent,
+            ip_address: body.ipAddress,
+            is_active: 1,
+        },
+        select: {
+            user_id: true,
+            refresh_token: true
+        }
+    });
+    // Selipkan access_token ke body response
     result.access_token = newAccessToken;
 
     return result;
-}
+};
 
-const logout = async (request) => {
-    // const user = request.refreshToken ? await verifyToken(request.refreshToken) : undefined;
-    const token = request.refreshToken ? request.refreshToken : request.refresh_token;
+// Auth middleware required
+const logout = async (cookie, body) => {
+    const user = cookie.refreshToken ? await verifyToken(cookie.refreshToken) : await verifyToken(body.refresh_token);
+    const refreshToken = cookie.refreshToken ? cookie.refreshToken : body.refresh_token;
+    if (!user) {
+        throw new ResponseError(401, "Unauthorized");
+    };
 
+    // Disable refresh token yang sekarang dipakai
     return prismaClient.session.updateMany({
         where: {
-            // refresh_token: request.refreshToken
-            refresh_token: token
+            refresh_token: refreshToken
         },
         data: {
             is_active: 0
         }
     });
-}
+};
 
-const logoutAll = async (request) => {
+const logoutAll = async (body) => {
+    // Disable semua refresh token (all device all ip)
     return prismaClient.session.updateMany({
         where: {
-            user_id: request.user_id,
+            user_id: body.user_id,
             is_active: 1,
         },
         data: {

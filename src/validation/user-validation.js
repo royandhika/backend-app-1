@@ -9,12 +9,11 @@ const registerValidation = Joi.object({
 });
 
 const updateValidation = Joi.object({
-    avatar: Joi.string().max(250).optional(),
+    avatar: Joi.string().max(255).optional(),
     firstname: Joi.string().max(50).pattern(new RegExp('^[A-z]+$')).optional(),
     lastname: Joi.string().max(50).pattern(new RegExp('^[A-z]+$')).optional(),
-    phone: Joi.string().max(20).pattern(new RegExp('^[0-9]+$')).optional(),
-    gender: Joi.number().optional(),
     birthdate: Joi.date().optional(),
+    gender: Joi.number().optional(),
     city: Joi.string().max(30).optional(),
     region: Joi.string().max(50).optional(),
     country: Joi.string().max(20).optional(),

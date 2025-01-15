@@ -11,7 +11,7 @@ const login = async (req, res, next) => {
             // secure: process.env.NODE_ENV === 'production',
             secure: true,
             sameSite: "Strict",
-            maxAge: 24 * 60 * 60 * 1000, // Expired 24 jam di cookie
+            maxAge: 48 * 60 * 60 * 1000, // Expired 48 jam di cookie
         });
 
         res.status(200).json({
@@ -24,9 +24,17 @@ const login = async (req, res, next) => {
 
 const refresh = async (req, res, next) => {
     try {
-        // update penyesuaian flutter
-        // const result = await sessionService.refresh(req.cookies);
-        const result = req.cookies.refreshToken ? await sessionService.refresh(req.cookies) : await sessionService.refresh(req.body);
+        req.body.userAgent = req.headers['user-agent']
+        req.body.ipAddress = req.ip
+        const result = await sessionService.refresh(req.cookies, req.body);
+
+        res.cookie('refreshToken', result.refresh_token, {
+            httpOnly: true,
+            // secure: process.env.NODE_ENV === 'production',
+            secure: true,
+            sameSite: "Strict",
+            maxAge: 48 * 60 * 60 * 1000, // Expired 48 jam di cookie
+        });
 
         res.status(200).json({
             data: result
@@ -36,19 +44,15 @@ const refresh = async (req, res, next) => {
     }
 };
 
-// Auth required
+// Auth middleware required
 const logout = async (req, res, next) => {
     try {
-        // await sessionService.logout(req.cookies);
-        if (!req.cookies.refreshToken) {
-            await sessionService.logout(req.body);
-        } else {
-            await sessionService.logout(req.cookies);
-        }
+        const result = await sessionService.logout(req.cookies, req.body);
 
         res.clearCookie("refreshToken");
         // clear accessToken di frontend
         res.status(200).json({
+            data: result,
             message: "Logout success"
         });
     } catch (e) {
@@ -58,11 +62,12 @@ const logout = async (req, res, next) => {
 
 const logoutAll = async (req, res, next) => {
     try {
-        await sessionService.logoutAll(req.body);
+        const result = await sessionService.logoutAll(req.body);
 
         res.clearCookie("refreshToken");
         // clear accessToken di frontend
         res.status(200).json({
+            data: result,
             message: "Logout success"
         });
     } catch (e) {

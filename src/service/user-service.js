@@ -1,71 +1,64 @@
 import { prismaClient } from "../app/database.js";
 import bcrypt from "bcrypt";
-import { v4 as uuid } from "uuid";
 import { registerValidation, updateValidation } from "../validation/user-validation.js";
 import { validate } from "../validation/validation.js";
 import { ResponseError } from "../error/response-error.js";
 
-const register = async (request) => {
-    const registerRequest = validate(registerValidation, request);
+const register = async (body) => {
+    const registerRequest = validate(registerValidation, body);
 
-    const userExist = await prismaClient.user.findFirst({
+    const usernameExist = await prismaClient.user.findFirst({
         where: {
-            OR: [
-                { username: registerRequest.username },
-                { email: registerRequest.email }
-            ]
+            username: registerRequest.username
+        }
+    });
+    const emailExist = await prismaClient.user.findFirst({
+        where: {
+            email: registerRequest.email
+        }
+    });
+    const phoneExist = await prismaClient.user.findFirst({
+        where: {
+            phone: registerRequest.phone
         }
     });
 
     registerRequest.password = await bcrypt.hash(registerRequest.password, 10);
-    // registerRequest.id = uuid().toString();
-    // registerRequest.profile = {
-    //     create: {
-    //         username: registerRequest.username,
-    //         phone: registerRequest.phone
-    //     }
-    // }
 
-    const register = {
-        id: uuid().toString(),
-        username: registerRequest.username,
-        email: registerRequest.email,
-        password: registerRequest.password,
-        profile: {
-            create: {
-                username: registerRequest.username,
-                phone: registerRequest.phone,
-                role: "user"
-            }
-        }
-    };
-
-    if (userExist) {
-        throw new ResponseError(400, "Username or email already exist");
+    if (usernameExist) {
+        throw new ResponseError(400, "Username already exist");
+    } else if (emailExist) {
+        throw new ResponseError(400, "Email already exist");
+    } else if (phoneExist) {
+        throw new ResponseError(400, "Phone already exist");
     } else {
         return prismaClient.user.create({
-            data: register,
+            data: {
+                ...registerRequest,
+                profile: {
+                    create: {}
+                }
+            },
             select: {
                 id: true,
-                username: true
-            }
+                username: true,
+            },
         });
     }
 };
 
-const get = async (request) => {
+// Auth middleware required
+const getProfile = async (body) => {
     const getRequest = await prismaClient.profile.findFirst({
         where: {
-            user_id: request.user_id,
+            user_id: body.user_id,
         },
         select: {
-            username: true,
             avatar: true,
             firstname: true,
             lastname: true,
             birthdate: true,
             gender: true,
-            phone: true,
             city: true,
             region: true,
             country: true,
@@ -80,32 +73,83 @@ const get = async (request) => {
     return getRequest;
 };
 
-const update = async (request) => {
-    const updateRequest = validate(updateValidation, request);
+const updateProfile = async (body) => {
+    const updateRequest = validate(updateValidation, body);
+    const { user_id, username, ...data } = updateRequest
 
     return prismaClient.profile.update({
         where: {
-            user_id: request.user_id,
+            user_id: user_id,
         },
-        data: updateRequest,
+        data: data,
         select: {
-            username: true,
             avatar: true,
             firstname: true,
             lastname: true,
             birthdate: true,
             gender: true,
-            phone: true,
             city: true,
             region: true,
             country: true,
             role: true,
         }
-    });        
-}
+    });
+};
+
+const getAllProperty = async (query, body) => {
+
+    const {
+        sort = "created_at",
+        order = "desc",
+        limit = "10",
+        page = "1"
+    } = query;
+
+    const orderBy = {};
+    orderBy[sort] = order === "asc" ? "asc" : "desc";
+
+
+    const limitQuery = parseInt(limit) || 10;
+    const pageQuery = parseInt(page) || 1;
+    const skip = (pageQuery - 1) * limitQuery;
+
+    const data = await prismaClient.property.findMany({
+        where: {
+            host_id: body.user_id,
+        },
+        orderBy: orderBy,
+        skip: skip,
+        take: limitQuery,
+    });
+
+    const totalProperty = await prismaClient.property.count({
+        where: {
+            host_id: body.user_id,
+        }
+    });
+    const totalPages = Math.ceil(totalProperty / limitQuery);
+
+    return {
+        result: data,
+        count: totalProperty,
+        page: pageQuery,
+        totalPages: totalPages
+    };
+};
+
+const getProperty = async (params, body) => {
+    return prismaClient.property.findFirst({
+        where: {
+            id: params,
+            host_id: body.user_id
+        }
+    });
+};
 
 export default {
     register,
-    get,
-    update
+    getProfile,
+    updateProfile,
+    getAllProperty,
+    getProperty
 }
