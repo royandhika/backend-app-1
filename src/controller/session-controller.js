@@ -2,8 +2,9 @@ import sessionService from "../service/session-service.js";
 
 const login = async (req, res, next) => {
     try {
-        req.body.userAgent = req.headers['user-agent']
-        req.body.ipAddress = req.ip
+        req.body.userAgent = req.headers['user-agent'];
+        req.body.ipAddress = req.ip;
+        console.log(req.headers['x-forwarded-for']?.split(',')[0] || req.connection.remoteAddress);
         const result = await sessionService.login(req.body);
 
         res.cookie('refreshToken', result.refresh_token, {
