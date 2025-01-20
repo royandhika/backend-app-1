@@ -4,9 +4,8 @@ const login = async (req, res, next) => {
     try {
         req.body.userAgent = req.headers['user-agent'];
         req.body.ipAddress = req.ip;
-        console.log(req.ip);
-        console.log(req.connection.remoteAddress);
-        console.log(req.headers['x-forwarded-for']?.split(',')[0]);
+        // Ini butuh setting nginx kalau di VPS karena reverse proxy 
+        // req.body.ipAddress = req.headers['x-forwarded-for']?.split(',')[0];
         const result = await sessionService.login(req.body);
 
         res.cookie('refreshToken', result.refresh_token, {
@@ -29,7 +28,8 @@ const refresh = async (req, res, next) => {
     try {
         req.body.userAgent = req.headers['user-agent']
         req.body.ipAddress = req.ip
-        const result = await sessionService.refresh(req.cookies, req.body);
+        const refreshToken = req.headers['authorization']?.split(' ')[1];
+        const result = await sessionService.refresh(req.cookies, req.body, refreshToken);
 
         res.cookie('refreshToken', result.refresh_token, {
             httpOnly: true,

@@ -50,10 +50,10 @@ const login = async (body) => {
     return result;
 };
 
-const refresh = async (cookie, body) => {
+const refresh = async (cookie, body, token) => {
     // Ambil refreshToken di cookie, kalau gaada, ambil refresh_token di body request
-    const user = cookie.refreshToken ? await verifyToken(cookie.refreshToken) : await verifyToken(body.refresh_token);
-    const refreshToken = cookie.refreshToken ? cookie.refreshToken : body.refresh_token;
+    const user = cookie.refreshToken ? await verifyToken(cookie.refreshToken) : await verifyToken(token);
+    const refreshToken = cookie.refreshToken ? cookie.refreshToken : token;
     if (!user) {
         throw new ResponseError(401, "Unauthorized");
     };
