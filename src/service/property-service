@@ -1,4 +1,4 @@
-import { prismaClient } from "../app/database.js"
+import { prismaClient } from "../app/database.js";
 
 const post = async (body) => {
     const { user_id, username, ...requestBody } = body;
@@ -6,21 +6,21 @@ const post = async (body) => {
     return prismaClient.property.create({
         data: {
             ...requestBody,
-            host_id: user_id
+            host_id: user_id,
         },
         select: {
             id: true,
             host_id: true,
             title: true,
-        }
+        },
     });
 };
 
 const get = async (params) => {
     return prismaClient.property.findFirst({
         where: {
-            id: params
-        }
+            id: params,
+        },
     });
 };
 
@@ -30,13 +30,13 @@ const getAll = async (query) => {
         sort = "price",
         order = "desc",
         limit = "10",
-        page = "1"
+        page = "1",
     } = query;
 
     const where = {};
     if (city) {
         where.city = city;
-    };
+    }
 
     const orderBy = {};
     orderBy[sort] = order === "asc" ? "asc" : "desc";
@@ -59,7 +59,7 @@ const getAll = async (query) => {
         result: data,
         count: totalProperty,
         page: pageQuery,
-        totalPages: totalPages
+        totalPages: totalPages,
     };
 };
 
@@ -71,7 +71,7 @@ const update = async (params, body) => {
             id: params,
             host_id: user_id,
         },
-        data: requestBody
+        data: requestBody,
     });
 };
 
@@ -79,15 +79,25 @@ const remove = async (params, body) => {
     return prismaClient.property.delete({
         where: {
             id: params,
-            host_id: body.user_id
-        }
+            host_id: body.user_id,
+        },
     });
-}
+};
+
+const postBooking = async (body) => {
+    // prismaClient.booking.create({
+    //     data: {
+    //     },
+    //     select: {
+    //     }
+    // });
+};
 
 export default {
     post,
     get,
     getAll,
     update,
-    remove
-}
+    remove,
+    postBooking,
+};

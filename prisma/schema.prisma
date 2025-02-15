@@ -13,135 +13,202 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum UserRole {
-  tenant
-  host
-}
-
 enum BookingStatus {
   pending
   confirmed
   cancelled
 }
 
+enum OrderStatus {
+  Pending
+  Paid
+  Cancelled
+  Shipped
+}
+
+enum FlagAddress {
+  Home
+  Office
+}
+
 model User {
-  id             String   @id @default(cuid())
+  id             Int      @id @default(autoincrement())
   username       String   @unique @db.VarChar(20)
   password       String   @db.VarChar(255)
   email          String   @unique @db.VarChar(30)
   verified_email Int      @default(0) @db.TinyInt
-  phone          String   @unique @db.VarChar(20)
+  phone          String?  @unique @db.VarChar(20)
   verified_phone Int      @default(0) @db.TinyInt
-  created_at     DateTime @default(now()) 
-  updated_at     DateTime @updatedAt() 
+  created_at     DateTime @default(now())
+  updated_at     DateTime @default(now()) @updatedAt()
 
-  profile  Profile?
-  session  Session[]
-  property Property[]
-  booking  Booking[]
+  userprofile   UserProfile?
+  useraddress   UserAddress[]
+  usersession   UserSession[]
+  order         Order[]
+  productreview ProductReview[]
 
   @@map("users")
 }
 
-model Profile {
-  id         String    @id @default(cuid())
-  user_id    String    @unique
+model UserProfile {
+  id         Int       @id @default(autoincrement())
+  user_id    Int       @unique
   avatar     String?   @db.VarChar(250)
-  firstname  String?   @db.VarChar(50)
-  lastname   String?   @db.VarChar(50)
+  full_name  String?   @db.VarChar(50)
   birthdate  DateTime? @db.Date
-  gender     Int       @default(0) @db.TinyInt
-  city       String?   @db.VarChar(30)
-  region     String?   @db.VarChar(50)
-  country    String?   @db.VarChar(50)
-  role       UserRole  @default(tenant)
+  gender     String?   @db.VarChar(6)
   created_at DateTime  @default(now())
-  updated_at DateTime  @updatedAt()
+  updated_at DateTime  @default(now()) @updatedAt()
 
   user User @relation(fields: [user_id], references: [id])
 
-  @@map("profiles")
+  @@map("user_profiles")
 }
 
-model Session {
-  id            String   @id @default(cuid())
-  user_id       String
+model UserAddress {
+  id          Int         @id @default(autoincrement())
+  user_id     Int
+  name        String      @db.VarChar(50)
+  phone       String      @db.VarChar(20)
+  address     String      @db.VarChar(50)
+  postal_code String      @db.VarChar(5)
+  district    String      @db.VarChar(20)
+  city        String      @db.VarChar(20)
+  province    String      @db.VarChar(20)
+  notes       String?     @db.VarChar(80)
+  is_default  Int         @default(0) @db.TinyInt
+  flag        FlagAddress
+  created_at  DateTime    @default(now())
+  updated_at  DateTime    @default(now()) @updatedAt()
+
+  user  User    @relation(fields: [user_id], references: [id])
+  order Order[]
+
+  @@map("user_addresses")
+}
+
+model UserSession {
+  id            Int      @id @default(autoincrement())
+  user_id       Int
   refresh_token String   @db.VarChar(250)
   user_agent    String   @db.VarChar(50)
   ip_address    String   @db.VarChar(20)
   is_active     Int      @db.TinyInt
   created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt()
+  updated_at    DateTime @default(now()) @updatedAt()
 
   user User @relation(fields: [user_id], references: [id])
 
-  @@map("sessions")
+  @@map("user_sessions")
 }
 
-model Property {
-  id         String   @id @default(cuid())
-  host_id    String
-  title      String   @db.VarChar(30)
-  desc       String?  @db.Text
-  address    String   @db.VarChar(100)
-  city       String?  @db.VarChar(30)
-  region     String?  @db.VarChar(50)
-  country    String?  @db.VarChar(50)
-  price      Decimal  @db.Decimal(15, 2)
-  max_guests Int      @db.Int
-  bedrooms   Int      @db.Int
-  bathrooms  Int      @db.Int
-  created_at DateTime @default(now()) 
-  updated_at DateTime @updatedAt 
-
-  user User @relation(fields: [host_id], references: [id])
-
-  booking Booking[]
-  image   Image[]
-
-  @@map("properties")
-}
-
-model Booking {
-  id          String        @id @default(cuid())
-  property_id String
-  tenant_id   String
-  start_date  DateTime      @db.Date
-  end_date    DateTime      @db.Date
-  total_price Decimal       @db.Decimal(15, 2)
-  status      BookingStatus @default(pending)
-  created_at  DateTime      @default(now())
-  updated_at  DateTime      @updatedAt
-
-  user     User     @relation(fields: [tenant_id], references: [id])
-  property Property @relation(fields: [property_id], references: [id])
-
-  review Review?
-
-  @@map("bookings")
-}
-
-model Review {
-  id         String   @id @default(cuid())
-  booking_id String   @unique
-  rating     Int      @db.TinyInt
-  comment    String?  @db.Text
+model MasterColour {
+  id         Int      @id @default(autoincrement())
+  name       String   @db.VarChar(50)
+  hex        String   @db.VarChar(12)
   created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
+  updated_at DateTime @default(now()) @updatedAt()
 
-  booking Booking @relation(fields: [booking_id], references: [id])
+  productvariant ProductVariant[]
 
-  @@map("reviews")
+  @@map("master_colour")
 }
 
-model Image {
-  id          String   @id @default(cuid())
-  property_id String
-  url         String   @db.Text
+model Product {
+  id          Int      @id @default(autoincrement())
+  title       String   @db.VarChar(30)
+  description String?  @db.Text
+  base_price  Decimal  @db.Decimal(12, 2)
+  category    String   @db.VarChar(20)
+  gender      String   @db.VarChar(20)
+  tags        Json
   created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
+  updated_at  DateTime @default(now()) @updatedAt()
 
-  property Property @relation(fields: [property_id], references: [id])
+  productvariant ProductVariant[]
+  productimage   ProductImage[]
+  // productreview  ProductReview[]
 
-  @@map("images")
+  @@map("products")
+}
+
+model ProductImage {
+  id           Int      @id @default(autoincrement())
+  product_id   Int
+  url          String   @db.Text
+  is_thumbnail Int      @db.TinyInt
+  created_at   DateTime @default(now())
+  updated_at   DateTime @default(now()) @updatedAt
+
+  product Product @relation(fields: [product_id], references: [id])
+
+  @@map("product_images")
+}
+
+model ProductVariant {
+  id             Int      @id @default(autoincrement())
+  product_id     Int
+  colour_id      Int
+  size           String   @db.TinyText
+  stock          Int      @db.Int
+  reserved_stock Int      @db.Int
+  price          Decimal  @db.Decimal(12, 2)
+  created_at     DateTime @default(now())
+  updated_at     DateTime @default(now()) @updatedAt()
+
+  product   Product      @relation(fields: [product_id], references: [id])
+  colour    MasterColour @relation(fields: [colour_id], references: [id])
+  orderitem OrderItem[]
+
+  @@map("product_variants")
+}
+
+model Order {
+  id         Int         @id @default(autoincrement())
+  address_id Int
+  user_id    Int
+  status     OrderStatus @default(Pending)
+  total      Decimal     @db.Decimal(12, 2)
+  created_at DateTime    @default(now())
+  updated_at DateTime    @default(now()) @updatedAt
+
+  useraddress UserAddress @relation(fields: [address_id], references: [id])
+  user        User        @relation(fields: [user_id], references: [id])
+  orderitem   OrderItem[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id                 Int      @id @default(autoincrement())
+  order_id           Int
+  product_variant_id Int
+  quantity           Int
+  price              Decimal  @db.Decimal(10, 2)
+  created_at         DateTime @default(now())
+  updated_at         DateTime @default(now()) @updatedAt
+
+  order          Order          @relation(fields: [order_id], references: [id])
+  productvariant ProductVariant @relation(fields: [product_variant_id], references: [id])
+  productreview  ProductReview?
+
+  @@map("order_items")
+}
+
+model ProductReview {
+  id            Int      @id @default(autoincrement())
+  order_item_id Int      @unique
+  user_id       Int
+  // product_id    Int
+  rating        Decimal  @db.Decimal(10, 2)
+  comment       String?  @db.Text
+  created_at    DateTime @default(now())
+  updated_at    DateTime @default(now()) @updatedAt
+
+  user      User      @relation(fields: [user_id], references: [id])
+  // product   Product   @relation(fields: [product_id], references: [id])
+  orderitem OrderItem @relation(fields: [order_item_id], references: [id])
+
+  @@map("product_reviews")
 }

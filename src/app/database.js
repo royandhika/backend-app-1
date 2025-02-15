@@ -19,33 +19,33 @@ export const prismaClient = new PrismaClient({
             emit: "event",
             level: "query",
         },
-    ]
+    ],
 });
 
 prismaClient.$on("error", (e) => {
     if (e.timestamp) {
-        delete e.timestamp
-    };
+        delete e.timestamp;
+    }
     logger.warn(e);
 });
 
 prismaClient.$on("warn", (e) => {
     if (e.timestamp) {
-        delete e.timestamp
-    };
+        delete e.timestamp;
+    }
     logger.warn(e);
 });
 
 prismaClient.$on("info", (e) => {
     if (e.timestamp) {
-        delete e.timestamp
-    };
+        delete e.timestamp;
+    }
     logger.info(e);
 });
 
 prismaClient.$on("query", (e) => {
     if (e.timestamp) {
-        delete e.timestamp
-    };
+        delete e.timestamp;
+    }
     logger.info(e);
 });

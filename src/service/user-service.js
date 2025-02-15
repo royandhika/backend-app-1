@@ -1,7 +1,7 @@
 import { prismaClient } from "../app/database.js";
 import bcrypt from "bcrypt";
 import { registerValidation, updateValidation } from "../validation/user-validation.js";
-import { validate } from "../validation/validation.js";
+import { validate } from "../util/utility.js";
 import { ResponseError } from "../error/response-error.js";
 
 const register = async (body) => {
@@ -9,35 +9,37 @@ const register = async (body) => {
 
     const usernameExist = await prismaClient.user.findFirst({
         where: {
-            username: registerRequest.username
-        }
+            username: registerRequest.username,
+        },
     });
     const emailExist = await prismaClient.user.findFirst({
         where: {
-            email: registerRequest.email
-        }
+            email: registerRequest.email,
+        },
     });
-    const phoneExist = await prismaClient.user.findFirst({
-        where: {
-            phone: registerRequest.phone
-        }
-    });
+    // const phoneExist = await prismaClient.user.findFirst({
+    //     where: {
+    //         phone: registerRequest.phone
+    //     }
+    // });
 
     registerRequest.password = await bcrypt.hash(registerRequest.password, 10);
 
-    if (usernameExist) {
+    if (usernameExist && emailExist) {
+        throw new ResponseError(400, "Username and email already exist");
+    } else if (usernameExist) {
         throw new ResponseError(400, "Username already exist");
     } else if (emailExist) {
         throw new ResponseError(400, "Email already exist");
-    } else if (phoneExist) {
-        throw new ResponseError(400, "Phone already exist");
+        // } else if (phoneExist) {
+        //     throw new ResponseError(400, "Phone already exist");
     } else {
         return prismaClient.user.create({
             data: {
                 ...registerRequest,
-                profile: {
-                    create: {}
-                }
+                userprofile: {
+                    create: {},
+                },
             },
             select: {
                 id: true,
@@ -49,25 +51,20 @@ const register = async (body) => {
 
 // Auth middleware required
 const getProfile = async (body) => {
-    const getRequest = await prismaClient.profile.findFirst({
+    const getRequest = await prismaClient.userProfile.findFirst({
         where: {
             user_id: body.user_id,
         },
         select: {
             avatar: true,
-            firstname: true,
-            lastname: true,
+            full_name: true,
             birthdate: true,
             gender: true,
-            city: true,
-            region: true,
-            country: true,
-            role: true,
-        }
+        },
     });
 
     if (!getRequest) {
-        throw new ResponseError(404, "User not found")
+        throw new ResponseError(404, "User not found");
     }
 
     return getRequest;
@@ -75,39 +72,90 @@ const getProfile = async (body) => {
 
 const updateProfile = async (body) => {
     const updateRequest = validate(updateValidation, body);
-    const { user_id, username, ...data } = updateRequest
+    const { user_id, username, ...data } = updateRequest;
 
-    return prismaClient.profile.update({
+    return prismaClient.userProfile.update({
         where: {
             user_id: user_id,
         },
         data: data,
         select: {
             avatar: true,
-            firstname: true,
-            lastname: true,
+            full_name: true,
             birthdate: true,
             gender: true,
+        },
+    });
+};
+
+const postAddress = async (body) => {
+    // Tambahkan validasi input address pake joi jika perlu
+    const { username, ...data } = body;
+
+    const defaultAddress = await prismaClient.userAddress.findFirst({
+        where: {
+            user_id: data.user_id,
+            is_default: 1,
+        },
+        select: {
+            id: true,
+        },
+    });
+    if (!defaultAddress) {
+        data.is_default = 1;
+    } else if (defaultAddress && data.is_default === 1) {
+        await prismaClient.userAddress.updateMany({
+            where: {
+                user_id: data.user_id,
+            },
+            data: {
+                is_default: 0,
+            },
+        });
+    }
+
+    return prismaClient.userAddress.create({
+        data: data,
+        select: {
+            id: true,
+            user_id: true,
+            name: true,
+            phone: true,
+            address: true,
+            postal_code: true,
+            district: true,
             city: true,
-            region: true,
-            country: true,
-            role: true,
-        }
+            province: true,
+        },
+    });
+};
+
+const getAddress = async (body) => {
+    return prismaClient.userAddress.findMany({
+        where: {
+            user_id: body.user_id,
+        },
+        select: {
+            id: true,
+            name: true,
+            phone: true,
+            address: true,
+            postal_code: true,
+            district: true,
+            city: true,
+            province: true,
+            notes: true,
+            flag: true,
+            is_default: true,
+        },
     });
 };
 
 const getAllProperty = async (query, body) => {
-
-    const {
-        sort = "created_at",
-        order = "desc",
-        limit = "10",
-        page = "1"
-    } = query;
+    const { sort = "created_at", order = "desc", limit = "10", page = "1" } = query;
 
     const orderBy = {};
     orderBy[sort] = order === "asc" ? "asc" : "desc";
-
 
     const limitQuery = parseInt(limit) || 10;
     const pageQuery = parseInt(page) || 1;
@@ -125,7 +173,7 @@ const getAllProperty = async (query, body) => {
     const totalProperty = await prismaClient.property.count({
         where: {
             host_id: body.user_id,
-        }
+        },
     });
     const totalPages = Math.ceil(totalProperty / limitQuery);
 
@@ -133,7 +181,7 @@ const getAllProperty = async (query, body) => {
         result: data,
         count: totalProperty,
         page: pageQuery,
-        totalPages: totalPages
+        totalPages: totalPages,
     };
 };
 
@@ -141,8 +189,8 @@ const getProperty = async (params, body) => {
     return prismaClient.property.findFirst({
         where: {
             id: params,
-            host_id: body.user_id
-        }
+            host_id: body.user_id,
+        },
     });
 };
 
@@ -150,6 +198,8 @@ export default {
     register,
     getProfile,
     updateProfile,
+    postAddress,
+    getAddress,
     getAllProperty,
-    getProperty
-}
+    getProperty,
+};
